@@ -6,7 +6,7 @@ export default function BoxDom() {
       <p>Arthur Koshelenko Felixovich</p>
       <a href="mailto:koshelenko.dev@proton.me">koshelenko.dev@proton.me</a>
       <p>
-        <a href="https://t.me/G1lgamesh777">+79114667908</a>
+        <a href="https://t.me/G1lgamesh777">Telegram</a>
       </p>
     </div>
   );
