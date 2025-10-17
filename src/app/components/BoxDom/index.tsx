@@ -4,6 +4,7 @@ import {
   IconBrandLinkedinFilled,
   IconBrandTelegram,
 } from "@tabler/icons-react";
+
 import s from "./BoxDom.module.scss";
 
 export default function BoxDom() {
@@ -49,8 +50,8 @@ export default function BoxDom() {
         </a>
         <a
           className={s.resumeBtn}
-          href="/ArthurKoshelenkoResume.pdf"
-          download="ArthurKoshelenkoResume.pdf"
+          href="resume.pdf"
+          download="resume.pdf"
           aria-label="Download Resume"
         >
           Resume
