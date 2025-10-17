@@ -26,7 +26,7 @@ export default function BoxDom() {
         onClick={() => window.dispatchEvent(new Event("akf-toggle-holiday"))}
         style={{ cursor: "pointer" }}
       >
-        Arthur Koshelenko Felixovich
+        Arthur Koshelenko
       </p>
       <a href="mailto:koshelenko.A.dev@proton.me">koshelenko.A.dev@proton.me</a>
       <p className={s.links}>

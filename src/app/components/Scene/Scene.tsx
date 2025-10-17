@@ -212,12 +212,12 @@ export default function ThreeScene() {
       box.rotation.y += 0.0001;
       // holiday outer box color cycling
       if (holidayMode) {
-        hue = (hue + 0.6) % 360;
+        hue = (hue + 0.3) % 360;
         (box.material as THREE.MeshStandardMaterial).color.set(
           `hsl(${hue}, 85%, 55%)`
         );
         (box.material as THREE.MeshStandardMaterial).emissive.set(
-          `hsl(${(hue + 180) % 360}, 60%, 35%)`
+          `hsl(${(hue + 260) % 360}, 60%, 35%)`
         );
       } else {
         (box.material as THREE.MeshStandardMaterial).color.set("#880000");
