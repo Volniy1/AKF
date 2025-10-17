@@ -94,14 +94,134 @@ export default function ThreeScene() {
     let direction = 0.0017;
     let limit = 0.5;
 
+    let shouldFocus = false;
+    let isDragging = false;
+    let lastPointerX = 0;
+    let lastPointerY = 0;
+    const dragSpeed = 0.005; // lower = slower rotation per pixel
+    let lastTapTime = 0;
+    let holidayMode = false;
+    let hue = 0;
+
+    const focusListener = (e: CustomEvent<boolean>) => {
+      shouldFocus = Boolean((e as any).detail);
+    };
+    // listen to focus toggle from header/email hover
+    window.addEventListener("akf-focus-cube", focusListener as EventListener);
+
+    const holidayListener = () => {
+      holidayMode = !holidayMode;
+    };
+    window.addEventListener("akf-toggle-holiday", holidayListener);
+
+    // pointer drag handlers (mouse, touch, pen)
+    const raycaster = new THREE.Raycaster();
+    const ndc = new THREE.Vector2();
+    const onPointerDown = (e: PointerEvent) => {
+      // compute NDC for raycast
+      ndc.x = (e.clientX / window.innerWidth) * 2 - 1;
+      ndc.y = -(e.clientY / window.innerHeight) * 2 + 1;
+      raycaster.setFromCamera(ndc, camera);
+      const hit = raycaster.intersectObject(cube, true);
+
+      if (hit.length === 0) {
+        // clicked outside the cube → resume auto motion and don't start dragging
+        isDragging = false;
+        shouldFocus = false;
+        return;
+      }
+
+      isDragging = true;
+      lastPointerX = e.clientX;
+      lastPointerY = e.clientY;
+      // prevent scroll on touch drag
+      if (e.pointerType === "touch") e.preventDefault();
+      try {
+        renderer.domElement.setPointerCapture(e.pointerId);
+      } catch {}
+    };
+
+    const onPointerMove = (e: PointerEvent) => {
+      if (!isDragging) return;
+      if (e.pointerType === "touch") e.preventDefault();
+      const deltaX = e.clientX - lastPointerX;
+      const deltaY = e.clientY - lastPointerY;
+      lastPointerX = e.clientX;
+      lastPointerY = e.clientY;
+      // rotate cube: horizontal drag -> y rotation, vertical -> x rotation
+      cube.rotation.y += deltaX * dragSpeed;
+      cube.rotation.x += deltaY * dragSpeed;
+      // cancel focus mode while actively dragging
+      shouldFocus = false;
+    };
+
+    const onPointerUp = (e: PointerEvent) => {
+      isDragging = false;
+      if (e.pointerType === "touch") e.preventDefault();
+      try {
+        renderer.domElement.releasePointerCapture(e.pointerId);
+      } catch {}
+    };
+
+    const onPointerCancel = (e: PointerEvent) => {
+      isDragging = false;
+    };
+
+    renderer.domElement.addEventListener("pointerdown", onPointerDown);
+    window.addEventListener("pointermove", onPointerMove, {
+      passive: false,
+    } as any);
+    window.addEventListener("pointerup", onPointerUp);
+    window.addEventListener("pointercancel", onPointerCancel);
+
+    // resume auto animation on double click/tap
+    const resumeAuto = () => {
+      shouldFocus = false;
+    };
+
+    const onDblClick = () => resumeAuto();
+    renderer.domElement.addEventListener("dblclick", onDblClick);
+
+    const onTouchDoubleTap = (e: PointerEvent) => {
+      if (e.pointerType !== "touch") return;
+      const now = performance.now();
+      if (now - lastTapTime < 300) {
+        resumeAuto();
+      }
+      lastTapTime = now;
+    };
+    renderer.domElement.addEventListener("pointerup", onTouchDoubleTap);
+
     const animate = () => {
-      cube.rotation.x += direction;
-      cube.rotation.y += direction;
+      if (shouldFocus && !isDragging) {
+        // ease cube back to centered rotation
+        const ease = 0.08;
+        cube.rotation.x += (0 - cube.rotation.x) * ease;
+        cube.rotation.y += (0 - cube.rotation.y) * ease;
+      } else {
+        // only run autonomous motion when not dragging
+        if (!isDragging) {
+          cube.rotation.x += direction;
+          cube.rotation.y += direction;
+          if (cube.rotation.y >= limit || cube.rotation.y <= -limit) {
+            direction *= -1;
+          }
+        }
+      }
       box.rotation.z += 0.0001;
       box.rotation.y += 0.0001;
-
-      if (cube.rotation.y >= limit || cube.rotation.y <= -limit) {
-        direction *= -1;
+      // holiday outer box color cycling
+      if (holidayMode) {
+        hue = (hue + 0.6) % 360;
+        (box.material as THREE.MeshStandardMaterial).color.set(
+          `hsl(${hue}, 85%, 55%)`
+        );
+        (box.material as THREE.MeshStandardMaterial).emissive.set(
+          `hsl(${(hue + 180) % 360}, 60%, 35%)`
+        );
+      } else {
+        (box.material as THREE.MeshStandardMaterial).color.set("#880000");
+        (box.material as THREE.MeshStandardMaterial).emissive.set("#00116e");
       }
       composer.render();
       requestAnimationFrame(animate);
@@ -110,6 +230,17 @@ export default function ThreeScene() {
 
     return () => {
       renderer.dispose();
+      window.removeEventListener(
+        "akf-focus-cube",
+        focusListener as EventListener
+      );
+      window.removeEventListener("akf-toggle-holiday", holidayListener);
+      renderer.domElement.removeEventListener("pointerdown", onPointerDown);
+      window.removeEventListener("pointermove", onPointerMove as any);
+      window.removeEventListener("pointerup", onPointerUp);
+      window.removeEventListener("pointercancel", onPointerCancel);
+      renderer.domElement.removeEventListener("dblclick", onDblClick);
+      renderer.domElement.removeEventListener("pointerup", onTouchDoubleTap);
       if (mountRef.current) mountRef.current.removeChild(renderer.domElement);
     };
   }, []);

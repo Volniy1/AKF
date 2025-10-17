@@ -1,2 +1,4 @@
 .scene {
+  /* allow pointer events to control drag without browser gestures */
+  touch-action: none;
 }
