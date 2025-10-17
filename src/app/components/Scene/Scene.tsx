@@ -92,14 +92,14 @@ export default function ThreeScene() {
     scene.add(cube);
 
     let direction = 0.0017;
-    let limit = 0.5;
-
+    // oscillate around a dynamic center with fixed amplitude
+    let amplitude = 0.5; // radians
+    let spinCenterY = 0; // updated when drag ends
     let shouldFocus = false;
     let isDragging = false;
     let lastPointerX = 0;
     let lastPointerY = 0;
     const dragSpeed = 0.005; // lower = slower rotation per pixel
-    let lastTapTime = 0;
     let holidayMode = false;
     let hue = 0;
 
@@ -157,6 +157,8 @@ export default function ThreeScene() {
 
     const onPointerUp = (e: PointerEvent) => {
       isDragging = false;
+      shouldFocus = false;
+      spinCenterY = cube.rotation.y; // set new center
       if (e.pointerType === "touch") e.preventDefault();
       try {
         renderer.domElement.releasePointerCapture(e.pointerId);
@@ -165,6 +167,11 @@ export default function ThreeScene() {
 
     const onPointerCancel = (e: PointerEvent) => {
       isDragging = false;
+      shouldFocus = false;
+      spinCenterY = cube.rotation.y; // set new center
+      try {
+        renderer.domElement.releasePointerCapture(e.pointerId);
+      } catch {}
     };
 
     renderer.domElement.addEventListener("pointerdown", onPointerDown);
@@ -173,24 +180,6 @@ export default function ThreeScene() {
     } as any);
     window.addEventListener("pointerup", onPointerUp);
     window.addEventListener("pointercancel", onPointerCancel);
-
-    // resume auto animation on double click/tap
-    const resumeAuto = () => {
-      shouldFocus = false;
-    };
-
-    const onDblClick = () => resumeAuto();
-    renderer.domElement.addEventListener("dblclick", onDblClick);
-
-    const onTouchDoubleTap = (e: PointerEvent) => {
-      if (e.pointerType !== "touch") return;
-      const now = performance.now();
-      if (now - lastTapTime < 300) {
-        resumeAuto();
-      }
-      lastTapTime = now;
-    };
-    renderer.domElement.addEventListener("pointerup", onTouchDoubleTap);
 
     const animate = () => {
       if (shouldFocus && !isDragging) {
@@ -203,7 +192,10 @@ export default function ThreeScene() {
         if (!isDragging) {
           cube.rotation.x += direction;
           cube.rotation.y += direction;
-          if (cube.rotation.y >= limit || cube.rotation.y <= -limit) {
+          if (
+            cube.rotation.y >= spinCenterY + amplitude ||
+            cube.rotation.y <= spinCenterY - amplitude
+          ) {
             direction *= -1;
           }
         }
@@ -212,6 +204,7 @@ export default function ThreeScene() {
       box.rotation.y += 0.0001;
       // holiday outer box color cycling
       if (holidayMode) {
+        console.log(isDragging, shouldFocus);
         hue = (hue + 0.3) % 360;
         (box.material as THREE.MeshStandardMaterial).color.set(
           `hsl(${hue}, 85%, 55%)`
@@ -239,8 +232,6 @@ export default function ThreeScene() {
       window.removeEventListener("pointermove", onPointerMove as any);
       window.removeEventListener("pointerup", onPointerUp);
       window.removeEventListener("pointercancel", onPointerCancel);
-      renderer.domElement.removeEventListener("dblclick", onDblClick);
-      renderer.domElement.removeEventListener("pointerup", onTouchDoubleTap);
       if (mountRef.current) mountRef.current.removeChild(renderer.domElement);
     };
   }, []);
